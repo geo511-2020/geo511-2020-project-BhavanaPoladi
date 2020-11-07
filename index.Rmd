@@ -1,7 +1,6 @@
 ---
 title: "Final Project Template"
 author: Bhavana Poladi
-subtitle: Subtitle here if desired
 ---
 
 # Introduction
