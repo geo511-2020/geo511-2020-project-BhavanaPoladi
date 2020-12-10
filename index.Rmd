@@ -13,7 +13,7 @@ It is estimated that 792 million people lived with a mental disorder in 2017 whi
 
 
 # Materials and methods
-
+As part of initial setup, we need to load the required packages. For this project, the following packages are used
 
 ### Load the required packages
 ```{r, message=F, warning=F}
@@ -28,21 +28,32 @@ library(gganimate)
 knitr::opts_chunk$set(cache=TRUE)  
 ```
 
-### Download and clean all required data
+### Data import and pre-processing
+All the data required for this project is taken from [Our World in Data](https://ourworldindata.org). A total of three datasets related to depression are used. The first dataset contains information about the prevalence of depressive disorders in different regions of the world. The second and third datasets contains information on the world-wide prevalence of depressive disorders with to gender and age, respectively. All the datasets contain information from 1990 to 2017.
+
 ```{r}
-setwd("~/Desktop/GEO511")
+setwd("~/Desktop/GEO511/geo511-2020-project-BhavanaPoladi")
 depression_data <- read.csv("share-with-depression.csv")
-DepData_2017 <- depression_data %>%
-  filter(Year == '2017') %>%
-  select(Entity, Prevalence...Depressive.disorders...Sex..Both...Age..Age.standardized..Percent.) %>%
+dep_malesfemales <- read.csv("prevalence-of-depression-males-vs-females.csv")
+dep_age_data <- read.csv("prevalence-of-depression-by-age.csv")
+depression_data <- depression_data[-(4145:4172),]
+depression_data <- depression_data[-(281:308),]
+```
+Some of the region names in the dataset were different from the ones present in the world geojson data, so, the names of such regions should be modified accordingly. The code below shows how that is done.
+```{r}
+depression_data <- depression_data %>%
   mutate(Entity = ifelse(Entity == "United States", "United States of America", Entity)) %>%
   mutate(Entity = ifelse(Entity == "Congo", "Republic of Congo", Entity)) %>%
   mutate(Entity = ifelse(Entity == "Democratic Republic of Congo", "Democratic Republic of the Congo", Entity)) %>%
   mutate(Entity = ifelse(Entity == "Tanzania", "United Republic of Tanzania", Entity)) %>%
   mutate(Entity = ifelse(Entity == "Cote d'Ivoire", "Ivory Coast", Entity))
+DepData_2017 <- depression_data %>%
+  filter(Year == '2017')
 ```
 
 # Results
+
+Firstly, to show the prevalence of Depression across different regions in the world, a choropleth map is created. Since the most recent data available is from 2017, the map is created based on data from 2017 only. 
 ```{r, fig.width=6, fig.height=3}
 options(highcharter.theme = hc_theme_smpl(tooltip = list(valueDecimals = 2)))
 data(worldgeojson, package = "highcharter")
@@ -58,20 +69,18 @@ hc <- highchart() %>%
 hc
 
 ```
+The following table shows the top ten regions in the world with the highest prevalence of Depression.
 
+### Top 10 regions in the world with highest prevalence of Depression
 ```{r}
 top10_depression <- DepData_2017[order(-DepData_2017$Prevalence...Depressive.disorders...Sex..Both...Age..Age.standardized..Percent.),] %>%
   rename(Region = Entity, Percentage = Prevalence...Depressive.disorders...Sex..Both...Age..Age.standardized..Percent.)
 
-datatable(top10_depression, rownames = FALSE)
-```
-
-```{r}
-top10_dep_countries <- top10_depression[1:10, ]
+top10_dep_countries <- top10_depression[1:10, c(1,4)]
 reactable(top10_dep_countries, highlight = TRUE, bordered = TRUE, striped = TRUE)
 ```
-
-```{r}
+To show how Depression varied in these top 10 regions from 1990 to 2017, an animated plot is used. 
+```{r, fig.show = TRUE}
 data_anim <- depression_data %>%
   filter(Entity == 'Greenland' | Entity == 'Lesotho' | Entity == 'Morocco' | Entity == 'Iran' | Entity == 'Uganda' | Entity == 'United States of America' | Entity == 'Finland' | Entity == 'North America' | Entity == 'Palestine' | Entity == 'Australia') %>%
   rename(Region = Entity, Percentage = Prevalence...Depressive.disorders...Sex..Both...Age..Age.standardized..Percent.)
@@ -84,17 +93,295 @@ p <- ggplot(data_anim,
   scale_x_log10() +
   labs(x = "Percent", y = "Prevalence")
 
-anime <- p + facet_wrap(~Region) +
+anim <- p + facet_wrap(~Region) +
   transition_time(Year) +
   labs(title = "Year: {frame_time}")
-anime
+anim
 ```
 
-# Conclusions
+For the 10 regions with the highest prevalence, barplots of gender are plotted.
 
-[~200 words]
+### Barplot showing the gender-distribution of population with Depression in the top 10 regions
 
-Clear summary adequately describing the results and putting them in context. Discussion of further questions and ways to continue investigation.
+```{r, echo= FALSE, results = FALSE}
+dep_greenusa_malesfemales <- dep_malesfemales %>%
+  mutate(Entity = ifelse(Entity == "United States", "United States of America", Entity))%>%
+  filter(Entity == "Australia" | Entity == "Finland" | Entity == "Greenland"
+               | Entity == "Iran" | Entity == "Lesotho" | Entity == "Morocco" |
+                 Entity == "Palestine" |Entity == "Uganda"| Entity == "United States of America"
+               | Entity == "Sweden") %>%
+  filter(Year == '2017')
+
+x <- c(3.644142,
+       5.574693,
+       3.538557,
+       6.034669,
+       4.681865,
+       7.888555,
+       4.273300,
+       5.956564,
+       4.768301,
+       6.329416,
+       4.431267,
+       6.373630,
+       4.219078,
+       5.110360,
+       3.142278,
+       5.826420,
+       4.233753,
+       5.501703,
+       3.534154,
+       6.090078)
+dim(x) <- c(2,10)
+x
+nam <- c("Australia", "Finland", "Greenland","Iran","Lesotho","Morocco","Palestine",
+         "Sweden","Uganda", "USA")
+par(mar=c(3, 8, 2, 3))
+pl <- barplot(x,
+        main = "Males vs Females",
+        col = c("turquoise3","turquoise4"),
+        beside = TRUE,
+        names.arg = nam,
+        las = 2
+)
+legend("topleft",
+       c("Males","Females"),
+       fill = c("turquoise3","turquoise4")
+)
+pl
+
+```
+
+For the 10 regions with the highest prevalence, barplots of age-groups are plotted.
+
+```{r}
+dep_age_data <- read.csv("prevalence-of-depression-by-age.csv")
+dep_age_data <- dep_age_data %>%
+  mutate(Entity = ifelse(Entity == "United States", "United States of America", Entity)) %>%
+  mutate(Entity = ifelse(Entity == "Congo", "Republic of Congo", Entity)) %>%
+  mutate(Entity = ifelse(Entity == "Democratic Republic of Congo", "Democratic Republic of the Congo", Entity)) %>%
+  mutate(Entity = ifelse(Entity == "Tanzania", "United Republic of Tanzania", Entity)) %>%
+  mutate(Entity = ifelse(Entity == "Cote d'Ivoire", "Ivory Coast", Entity))
+top10_age <- dep_age_data %>%
+  filter(Entity == "Australia" | Entity == "Finland" | Entity == "Greenland"
+         | Entity == "Iran" | Entity == "Lesotho" | Entity == "Morocco" |
+           Entity == "Palestine" |Entity == "Uganda"| Entity == "United States of America"
+         | Entity == "Sweden") %>%
+  filter(Year == '2017')
+```
+### Barplots showing the age-distribution of population with Depression in the top 10 regions
+```{r, echo = FALSE,fig.show="hold", out.width="100%", results=FALSE}
+par(mfrow = c(2,2))
+par(mar = c(1,4,4,2))
+######### australia age #######
+age_aus <- top10_age[1,c(4,5,6,7,8,10,11,12)]
+aus <- c(2.588448,
+         5.627679,
+         6.741007,
+         6.260986,
+         5.973642,
+         6.10129,
+         4.977379,
+         4.119125)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_aus <- barplot(aus,
+                       main = "Australia, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE) 
+
+####### Finalnd age #####
+age_fin <- top10_age[2,c(4,5,6,7,8,10,11,12)]
+fin <- c(2.108986,
+         4.800936,
+         6.677282,
+         6.302352,
+         6.137043,
+         6.225298,
+         5.923458,
+         5.650542)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_fin <- barplot(fin,
+                       main = "Finland, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+######### Greenland ##########
+age_gre <- top10_age[3,c(4,5,6,7,8,10,11,12)]
+gre <- c(3.16435,8.55065,10.38135,9.441284,8.790512,8.961353,6.267714,4.102642)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_gre <- barplot(gre,
+                       main = "Greenland, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+
+######## iran age ########
+age_iran <- top10_age[4,c(4,5,6,7,8,10,11,12)]
+iran <- c(1.834636,
+          4.474298,
+          5.987603,
+          6.579311,
+          7.111501,
+          6.80672,
+          7.264615,
+          5.871135)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_iran <- barplot(iran,
+                       main = "Iran, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+######### lesotho age ######
+age_les <- top10_age[5,c(4,5,6,7,8,10,11,12)]
+les <- c(2.121098,
+         4.948889,
+         5.936113,
+         5.931766,
+         6.210873,
+         6.279367,
+         9.3001,
+         11.29954)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_les <- barplot(les,
+                        main = "Lesotho, 2017", 
+                        xlab = "Percentage of Population",
+                        names.arg = age_groups,
+                        las = 1,
+                        col = "salmon",
+                        horiz = TRUE)
+
+######## morocco age ########
+
+age_mor <- top10_age[6,c(4,5,6,7,8,10,11,12)]
+mor <- c(2.396557,
+         4.745014,
+         5.56983,
+         6.199538,
+         6.876269,
+         6.694176,
+         8.378018,
+         7.06173)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_mor <- barplot(mor,
+                       main = "Morocco, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+
+####### palestine age ##########
+age_pal <- top10_age[7,c(4,5,6,7,8,10,11,12)]
+pal <- c(2.391194,
+         4.471918,
+         4.959678,
+         5.432835,
+         5.928013,
+         5.603334,
+         6.819415,
+         6.125298)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_pal <- barplot(pal,
+                       main = "Palestine, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+
+####### Sweden age ##########
+age_swe <- top10_age[8,c(4,5,6,7,8,10,11,12)]
+swe <- c(1.825781,
+         4.189779,
+         5.751063,
+         5.834146,
+         5.911487,
+         5.790492,
+         5.902625,
+         5.537573)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_swe <- barplot(swe,
+                       main = "Sweden, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+
+####### Uganda age ##########
+age_ug <- top10_age[9,c(4,5,6,7,8,10,11,12)]
+ug <- c(2.15382,
+        4.448767,
+        4.536881,
+        4.706779,
+        5.010001,
+        5.003711,
+        8.848451,
+        11.08286)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_ug <- barplot(ug,
+                       main = "Uganda, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE)
+#######USA age ########
+age_USA <- top10_age[10,c(4,5,6,7,8,10,11,12)]
+usa <- c(2.698861,6.266544,6.667458,6.266791,6.201451,6.543942,5.325073,3.815748)
+age_groups <- c("10-14 years old", "15-19 years old", "20-24 years old", 
+                "25-29 years old", "30-34 years old", "35-49 years old",
+                "50-69 years old", "70+ years old")
+par(mar=c(3, 8, 2, 3))
+ageplot_USA <- barplot(usa,
+                       main = "USA, 2017", 
+                       xlab = "Percentage of Population",
+                       names.arg = age_groups,
+                       las = 1,
+                       col = "salmon",
+                       horiz = TRUE) 
+
+```
+
+# Conclusion
+
+As we saw in the maps above, depression has become prevalent all over the world, over the years. Greenland has the highest percentage of population with Depression. USA is ranked 6th in the entire world, with a percentage of 4.8%. From the gender-distribution plot, it is clear that females are highly affected by depression compared to the male populations. This trend is seen in all the top 10 regions. From the age-distribution barplots, it is observed that the age-groups highly affected by depression are varying in the top 10 regions.      
 
 # References
 
