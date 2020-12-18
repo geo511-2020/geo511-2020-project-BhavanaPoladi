@@ -32,7 +32,7 @@ knitr::opts_chunk$set(cache=TRUE)
 All the data required for this project is taken from [Our World in Data](https://ourworldindata.org). A total of three datasets related to depression are used. The first dataset contains information about the prevalence of depressive disorders in different regions of the world. The second and third datasets contains information on the world-wide prevalence of depressive disorders with to gender and age, respectively. All the datasets contain information from 1990 to 2017.
 
 ```{r}
-setwd("~/Desktop/GEO511/geo511-2020-project-BhavanaPoladi")
+setwd("~/Desktop/GEO511/geo511-2020-project-BhavanaPoladi") 
 depression_data <- read.csv("share-with-depression.csv")
 dep_malesfemales <- read.csv("prevalence-of-depression-males-vs-females.csv")
 dep_age_data <- read.csv("prevalence-of-depression-by-age.csv")
